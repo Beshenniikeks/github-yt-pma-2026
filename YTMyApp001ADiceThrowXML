@@ -1,0 +1,91 @@
+package com.example.ytmyapp001adicethrowxml
+
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.os.Bundle
+import android.view.animation.DecelerateInterpolator
+import android.widget.Button
+import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import kotlin.math.sin
+
+class MainActivity : AppCompatActivity() {
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContentView(R.layout.activity_main)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.llmain)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+        val diceSymbols = listOf("⚀", "⚁", "⚂", "⚃", "⚄", "⚅")
+        val tvDice: TextView = findViewById(R.id.TvDice)
+        val btnRoll: Button = findViewById(R.id.btnRoll)
+
+        btnRoll.setOnClickListener {
+            btnRoll.isEnabled = false
+
+            var lastTextChangeTime = 0L
+            var currentInterval = 35L
+
+            val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 2200L
+                interpolator = DecelerateInterpolator(2.2f)
+
+                addUpdateListener { anim ->
+                    val fraction = anim.animatedFraction
+                    val currentTime = anim.currentPlayTime
+
+                    // Плавный поворот на VSYNC (поддерживает 60/90/120 Гц)
+                    tvDice.rotation = fraction * 1440f
+
+                    // Легкий 3D эффект покачивания по оси X
+                    tvDice.rotationX = sin(fraction * Math.PI * 6).toFloat() * 18f
+
+                    // Смена граней с плавным замедлением
+                    if (currentTime - lastTextChangeTime >= currentInterval) {
+                        tvDice.text = diceSymbols.random()
+                        lastTextChangeTime = currentTime
+                        currentInterval = (35 + fraction * fraction * 360).toLong()
+                    }
+                }
+
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        // Финальное значение кости
+                        val diceValue = (1..6).random()
+                        tvDice.text = diceSymbols[diceValue - 1]
+                        tvDice.rotation = 0f
+                        tvDice.rotationX = 0f
+
+                        // Эффект пружинящего финиша при остановке
+                        tvDice.animate()
+                            .scaleX(1.25f)
+                            .scaleY(1.25f)
+                            .setDuration(120)
+                            .withEndAction {
+                                tvDice.animate()
+                                    .scaleX(1.0f)
+                                    .scaleY(1.0f)
+                                    .setDuration(120)
+                                    .withEndAction {
+                                        btnRoll.isEnabled = true
+                                    }
+                                    .start()
+                            }
+                            .start()
+                    }
+                })
+            }
+
+            animator.start()
+        }
+    }
+}
